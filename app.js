@@ -2,9 +2,6 @@ var restify = require('restify');
 var builder = require('botbuilder');
 var request = require('request');
 
-//=========================================================
-// Bot Setup
-//=========================================================
 
 // Setup Restify Server
 var server = restify.createServer();
@@ -19,11 +16,7 @@ var connector = new builder.ChatConnector({
     appPassword: 'XEXnpZdTN5XhwMpRiBgwfS5'
 });
 
-var recognizer = new builder.LuisRecognizer('https://westus.api.cognitive.microsoft.com/luis/v2.0/apps/0bf4122a-4496-41d6-a9fd-f1456b8dd17a?subscription-key=5cd44e69cb724e97b071ae58757c340f&verbose=true');
-var intents = new builder.IntentDialog({
-    recognizers: [recognizer]
-});
-
+// Begin bot waterfall conversation
 var bot = new builder.UniversalBot(connector, [
     function(session) {
         builder.Prompts.text(session, "Hi, I will help you find a place to live. What is your name?");
@@ -38,9 +31,6 @@ var bot = new builder.UniversalBot(connector, [
     },
     function(session, results) {
         session.privateConversationData.bedrooms = results.response;
-        // var bedrooms = results.response;
-        // console.log(typeof(bedrooms));
-        // bedrooms = bedrooms.match(/\d+/)[0];
         builder.Prompts.number(session, "You are looking for " + results.response + " bedrooms, what is the max price per month you want to pay?");
     },
     function(session, results) {
@@ -66,6 +56,8 @@ var bot = new builder.UniversalBot(connector, [
         var url = "http://localhost:5000/accommodation/" + session.privateConversationData.city + "/" + session.privateConversationData.bedrooms.toString() +
             "/" + session.privateConversationData.ppm.toString() + "/" + session.privateConversationData.furnished.toString() + "/" + session.privateConversationData.bills.toString();
              session.sendTyping();
+
+        // Send request to the accommodation API
         request(url, function(error, response, body) {
             if (!error && response.statusCode == 200) {
                 var data = JSON.parse(body);
@@ -80,6 +72,7 @@ var bot = new builder.UniversalBot(connector, [
     }
 ]);
 
+// Create cards for prcoessing by the chatbot
 function makeCards(session, data) {
     var cards = [];
     for (var i = 0; i < data.length; i++) {
@@ -93,7 +86,3 @@ function makeCards(session, data) {
 }
 
 server.post('/api/messages', connector.listen());
-
-//=========================================================
-// Bots Dialogs
-//=========================================================
